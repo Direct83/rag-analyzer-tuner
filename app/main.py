@@ -57,6 +57,22 @@ def _read_pdf(data: bytes) -> str:
         texts.append(t)
     return "\n".join(texts)
 
+def _extract_chunks_from_upload(name: str, raw_bytes: bytes, chunk_words: int, chunk_overlap: int) -> List[str]:
+    ext = name.lower().rsplit(".", 1)[-1] if "." in name else ""
+    if ext == "txt":
+        raw_text = _read_txt(raw_bytes)
+    elif ext == "pdf":
+        try:
+            raw_text = _read_pdf(raw_bytes)
+        except Exception as e:
+            raise HTTPException(415, f"Не удалось прочитать PDF: {e}")
+    else:
+        raise HTTPException(415, "Поддерживаются только .pdf и .txt")
+    raw_text = raw_text.strip()
+    if not raw_text:
+        raise HTTPException(400, f"Файл {name} не содержит извлекаемого текста")
+    return split_into_word_chunks(raw_text, chunk_words, chunk_overlap)
+
 def _index_in_background(task_id: str, filename: str, chunks: List[str]):
     """Фоновая индексация чанков с обновлением прогресса."""
     from . import retrieval
@@ -91,20 +107,7 @@ async def upload(
     for f in files:
         name = (f.filename or "upload").strip()
         raw_bytes = await f.read()
-        ext = name.lower().rsplit(".", 1)[-1] if "." in name else ""
-        if ext == "txt":
-            raw_text = _read_txt(raw_bytes)
-        elif ext == "pdf":
-            try:
-                raw_text = _read_pdf(raw_bytes)
-            except Exception as e:
-                raise HTTPException(415, f"Не удалось прочитать PDF: {e}")
-        else:
-            raise HTTPException(415, "Поддерживаются только .pdf и .txt")
-        raw_text = raw_text.strip()
-        if not raw_text:
-            raise HTTPException(400, f"Файл {name} не содержит извлекаемого текста")
-        chunks = split_into_word_chunks(raw_text, chunk_words, chunk_overlap)
+        chunks = _extract_chunks_from_upload(name, raw_bytes, chunk_words, chunk_overlap)
         try:
             info = retrieval.upsert_chunks(name, chunks)
         except Exception as e:
@@ -126,20 +129,7 @@ async def upload_async(
     for f in files:
         name = (f.filename or "upload").strip()
         raw_bytes = await f.read()
-        ext = name.lower().rsplit(".", 1)[-1] if "." in name else ""
-        if ext == "txt":
-            raw_text = _read_txt(raw_bytes)
-        elif ext == "pdf":
-            try:
-                raw_text = _read_pdf(raw_bytes)
-            except Exception as e:
-                raise HTTPException(415, f"Не удалось прочитать PDF: {e}")
-        else:
-            raise HTTPException(415, "Поддерживаются только .pdf и .txt")
-        raw_text = raw_text.strip()
-        if not raw_text:
-            raise HTTPException(400, f"Файл {name} не содержит извлекаемого текста")
-        chunks = split_into_word_chunks(raw_text, chunk_words, chunk_overlap)
+        chunks = _extract_chunks_from_upload(name, raw_bytes, chunk_words, chunk_overlap)
         task_id = str(uuid4())
         INDEX_PROGRESS[task_id] = {"filename": name, "processed": 0, "total": len(chunks), "done": False}
         background.add_task(_index_in_background, task_id, name, chunks)

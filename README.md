@@ -24,7 +24,7 @@ UI — лёгкий и современный: drag&drop загрузка, фо�
    OPENAI_API_KEY=sk-...
    OPENAI_MODEL=gpt-4o-mini
 4) Запустить сервер
-   uvicorn app.main:app --reload
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 5) Открыть UI
    http://localhost:8000/
 
@@ -38,6 +38,7 @@ UI — лёгкий и современный: drag&drop загрузка, фо�
 
 ## API (кратко)
 - GET `/` — UI
+- GET `/about` — текущая модель LLM
 - GET `/health` — healthcheck
 - GET `/documents` — { filename → count }
 - POST `/upload` — синхронная загрузка

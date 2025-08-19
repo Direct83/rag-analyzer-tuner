@@ -122,13 +122,20 @@ def list_documents() -> Dict[str, int]:
 def search(q: str, top_k: int = 5, fetch_k: int = 50, ef: int = 512, exact: bool = False) -> Tuple[List[SearchItem], Dict[str, object]]:
     qvec = embed_one(q)
     params = SearchParams(hnsw_ef=ef, exact=exact)
-    hits = _qd.search(
-        collection_name=COLLECTION,
-        query_vector=qvec,
-        limit=fetch_k,
-        with_payload=True,
-        search_params=params
-    )
+    hits = []
+    error: Optional[str] = None
+    try:
+        hits = _qd.search(
+            collection_name=COLLECTION,
+            query_vector=qvec,
+            limit=fetch_k,
+            with_payload=True,
+            search_params=params
+        )
+    except Exception as e:
+        # Отсутствие коллекции или любые ошибки поиска — вернуть пустой результат с диагностикой
+        error = str(e)
+        hits = []
     items = []
     for h in hits[:top_k]:
         payload = h.payload or {}
@@ -138,7 +145,9 @@ def search(q: str, top_k: int = 5, fetch_k: int = 50, ef: int = 512, exact: bool
             filename=payload.get("filename"),
             idx=payload.get("idx")
         ))
-    di = {"ef": ef, "exact": exact, "fetch_k": fetch_k, "top_k": top_k, "count": len(hits)}
+    di: Dict[str, object] = {"ef": ef, "exact": exact, "fetch_k": fetch_k, "top_k": top_k, "count": len(hits)}
+    if error:
+        di["error"] = error
     return items, di
 
 def answer_with_sources(q: str, top_k: int = 5) -> Tuple[str, List[SearchItem], Dict[str, object]]:

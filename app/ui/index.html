@@ -485,7 +485,6 @@
                     <div id="searchDiag" class="diag" style="display:none"></div>
                     <div id="answerWrap" class="answer" style="display:none">
                         <h4>Ответ</h4>
-                        <div id="answerPlaceholder" class="hint">Результаты откроются в отдельном окне</div>
                         <div id="answerText" class="text"></div>
                         <div class="sources">
                             <div class="hint">Источники:</div>
@@ -533,7 +532,8 @@
             for (const name of names) {
                 const item = document.createElement("div");
                 item.className = "list-item";
-                item.innerHTML = `<span title="${name}">${name}</span><span class="badge">${map[name]}</span>`;
+                const safeName = escapeHtml(name);
+                item.innerHTML = `<span title="${safeName}">${safeName}</span><span class="badge">${map[name]}</span>`;
                 el.appendChild(item);
             }
         }
@@ -549,9 +549,10 @@
             for (const [i, it] of (res.items || []).entries()) {
                 const hit = document.createElement("div");
                 hit.className = "hit";
-                const file = it.filename ? `${it.filename}:${it.idx ?? 0}` : `doc:${it.idx ?? 0}`;
+                const fileName = it.filename ? `${it.filename}:${it.idx ?? 0}` : `doc:${it.idx ?? 0}`;
+                const safeFile = escapeHtml(fileName);
                 hit.innerHTML = `
-                    <div class="meta"><span class="score">score ${it.score.toFixed(3)}</span><span>•</span><span>${file}</span></div>
+                    <div class="meta"><span class="score">score ${it.score.toFixed(3)}</span><span>•</span><span>${safeFile}</span></div>
                     <div class="title">Фрагмент #${i + 1}</div>
                     <div class="text">${escapeHtml(it.text)}</div>
                 `;
@@ -565,7 +566,6 @@
             const text = $("answerText");
             const src = $("answerSources");
             const diag = $("askDiag");
-            const placeholder = $("answerPlaceholder");
             text.textContent = "";
             if (src) src.innerHTML = "";
             diag.textContent = "";
@@ -573,7 +573,6 @@
             wrap.style.display = "block";
             const answer = res.answer || "";
             text.textContent = answer;
-            if (placeholder) placeholder.style.display = answer ? "none" : "block";
             // Источники (чанки) при Ask не показываем — скрываем блок
             const sourcesWrap = wrap.querySelector('.sources');
             if (sourcesWrap) sourcesWrap.style.display = 'none';
@@ -749,8 +748,17 @@
                 url.searchParams.set("q", q);
                 url.searchParams.set("top_k", String(topK));
                 const res = await fetch(url);
-                const json = await res.json();
-                renderAnswer(json);
+                if (!res.ok) {
+                    let msg = `Ошибка ${res.status}`;
+                    try {
+                        const t = await res.text();
+                        if (t) msg += `: ${t}`;
+                    } catch { }
+                    renderAnswer({ answer: "", sources: [], diagnostics: { error: msg } });
+                } else {
+                    const json = await res.json();
+                    renderAnswer(json);
+                }
             } catch (e) {
                 $("askDiag").textContent = "Ошибка при запросе ответа";
             } finally {
