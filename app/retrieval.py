@@ -90,7 +90,7 @@ def upsert_chunks(
                 pass
     return {"chunks": total}
 
-def list_documents(limit: int = 1000) -> Dict[str, int]:
+def list_documents() -> Dict[str, int]:
     # Если коллекция отсутствует (после очистки) — вернуть пустой список без ошибки
     try:
         _qd.get_collection(COLLECTION)
