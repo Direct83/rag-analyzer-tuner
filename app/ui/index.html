@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>RAG Minimal · Документы и ответы</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #11162a;
+            --muted: #7b88a8;
+            --text: #e6e9f2;
+            --primary: #6ea8fe;
+            --primary-600: #4f90ff;
+            --ring: 0 0 0 3px rgba(110, 168, 254, .35);
+            --border: #1e2640;
+            --green: #3ad29f;
+            --red: #ff6b6b;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg: #f6f7fb;
+                --panel: #ffffff;
+                --muted: #5b6475;
+                --text: #0e1320;
+                --primary: #3b82f6;
+                --primary-600: #2563eb;
+                --ring: 0 0 0 3px rgba(59, 130, 246, .25);
+                --border: #e6e8ef;
+            }
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans";
+            background: radial-gradient(1000px 500px at 10% -10%, rgba(110, 168, 254, .12), transparent 60%),
+                radial-gradient(1000px 500px at 110% 10%, rgba(137, 96, 255, .10), transparent 60%),
+                var(--bg);
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 32px auto;
+            padding: 0 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), #a78bfa);
+            box-shadow: 0 10px 30px rgba(110, 168, 254, .25);
+        }
+
+        h1 {
+            font-size: 22px;
+            margin: 0
+        }
+
+        .muted {
+            color: var(--muted)
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        @media (min-width: 960px) {
+            .grid {
+                grid-template-columns: 380px 1fr
+            }
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 10px 30px rgba(2, 6, 23, .18);
+        }
+
+        .card h3 {
+            margin: 0 0 12px;
+            font-size: 16px
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .btn {
+            appearance: none;
+            border: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02));
+            color: var(--text);
+            padding: 9px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
+        }
+
+        .btn:hover {
+            border-color: rgba(255, 255, 255, .18)
+        }
+
+        .btn:active {
+            transform: translateY(1px)
+        }
+
+        .btn.primary {
+            background: linear-gradient(180deg, var(--primary), var(--primary-600));
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 10px 20px rgba(59, 130, 246, .25);
+        }
+
+        .btn.danger {
+            background: linear-gradient(180deg, var(--red), #e85a5a);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 10px 20px rgba(255, 107, 107, .25)
+        }
+
+        .btn.ghost {
+            background: transparent
+        }
+
+        .btn[disabled] {
+            opacity: .6;
+            cursor: not-allowed
+        }
+
+        .input,
+        .number {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            outline: none;
+            transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+        }
+
+        .input:focus,
+        .number:focus {
+            box-shadow: var(--ring);
+            border-color: transparent
+        }
+
+        .stack {
+            display: grid;
+            gap: 10px
+        }
+
+        .stack-lg {
+            display: grid;
+            gap: 14px
+        }
+
+        .dropzone {
+            border: 1px dashed var(--border);
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            background: rgba(255, 255, 255, .02);
+            transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+            cursor: pointer;
+        }
+
+        .dropzone.drag {
+            box-shadow: var(--ring);
+            border-color: transparent;
+            background: rgba(110, 168, 254, .06)
+        }
+
+        .list {
+            display: grid;
+            gap: 8px;
+            max-height: 280px;
+            overflow: auto
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 13px;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, .02)
+        }
+
+        .badge {
+            font-variant-numeric: tabular-nums;
+            font-size: 12px;
+            background: rgba(255, 255, 255, .06);
+            padding: 2px 8px;
+            border-radius: 999px
+        }
+
+        .results {
+            display: grid;
+            gap: 12px
+        }
+
+        .hit {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, .02)
+        }
+
+        .hit .meta {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .hit .score {
+            color: var(--green);
+            font-variant-numeric: tabular-nums
+        }
+
+        .hit .title {
+            font-size: 14px;
+            margin: 4px 0 8px;
+            font-weight: 600
+        }
+
+        .hit .text {
+            white-space: pre-wrap;
+            line-height: 1.45
+        }
+
+        .answer {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            background: rgba(59, 130, 246, .04)
+        }
+
+        .answer h4 {
+            margin: 0 0 10px;
+            font-size: 14px
+        }
+
+        .sources {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px
+        }
+
+        .diag {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .footer {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        /* Modal for chunks */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, .55);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 16px;
+            z-index: 50;
+        }
+
+        .modal.open {
+            display: flex
+        }
+
+        .modal-content {
+            width: min(100%, 900px);
+            max-height: 80vh;
+            overflow: hidden;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: 0 10px 40px rgba(2, 6, 23, .45);
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .modal-title {
+            font-size: 15px;
+            font-weight: 600
+        }
+
+        .modal-close {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            border-radius: 10px;
+            padding: 6px 10px;
+            cursor: pointer
+        }
+
+        .modal-body {
+            padding: 14px;
+            overflow: auto;
+            display: grid;
+            gap: 12px
+        }
+
+        .modal-diag {
+            font-size: 12px;
+            color: var(--muted)
+        }
+    </style>
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b1020" />
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%236ea8fe'/><stop offset='1' stop-color='%23a78bfa'/></linearGradient></defs><rect rx='12' width='64' height='64' fill='url(%23g)'/></svg>">
+    <meta name="apple-mobile-web-app-title" content="RAG" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <style>
+        @media (max-width:420px) {
+            .header .muted {
+                display: none
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="brand">
+                <div class="logo"></div>
+                <div>
+                    <h1>RAG Minimal</h1>
+                    <div class="muted" id="subtitle">PDF/TXT · bge-m3 · Qdrant · {{MODEL}}</div>
+                </div>
+            </div>
+            <div class="muted">👉 Загрузи свои PDF/TXT, настрой параметры разбиения и поиска. Система не только выдаёт
+                ответ от LLM, но и показывает топ‑чанк, из которого он получен.</div>
+        </div>
+
+        <div class="grid">
+            <section class="card">
+                <h3>Документы</h3>
+                <div class="stack-lg">
+                    <div id="dropzone" class="dropzone">
+                        Перетащите PDF/TXT сюда или <u>выберите</u>
+                        <input id="fileInput" type="file" multiple accept=".pdf,.txt" style="display:none" />
+                    </div>
+                    <div class="row">
+                        <button id="btnClear" class="btn danger">Очистить базу</button>
+                        <span id="uploadStatus" class="hint"></span>
+                    </div>
+                    <div class="stack">
+                        <div class="hint">Параметры деления на чанки</div>
+                        <div class="row">
+                            <label class="hint">chunk_words
+                                <input id="chunkWords" class="number" type="number" min="50" max="1000" value="220"
+                                    style="width:100px;margin-left:8px" />
+                            </label>
+                            <label class="hint">chunk_overlap
+                                <input id="chunkOverlap" class="number" type="number" min="0" max="500" value="40"
+                                    style="width:100px;margin-left:8px" />
+                            </label>
+                        </div>
+                        <details class="hint">
+                            <summary>Подсказка по параметрам</summary>
+                            <div style="margin-top:8px">
+                                <div><b>chunk_words</b>: средняя длина фрагмента. Большие значения — меньше чанков, но
+                                    выше риск потерять контекстные границы.</div>
+                                <div><b>chunk_overlap</b>: сколько слов берём из конца предыдущего чанка в начало
+                                    следующего, чтобы сохранить связность.</div>
+                                <div style="margin-top:6px">Рекомендуемые значения: 180–300 слов и перекрытие 30–60
+                                    слов.</div>
+                            </div>
+                        </details>
+                    </div>
+                    <div id="progressBlock" class="stack" style="display:none">
+                        <div class="hint">Прогресс индексации:</div>
+                        <div id="progressArea" class="list"></div>
+                    </div>
+                    <div>
+                        <div class="hint" style="margin-bottom:6px">Загруженные файлы (имя → кол-во чанков):</div>
+                        <div id="docs" class="list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h3>Поиск и ответ</h3>
+                <div class="stack-lg">
+                    <input id="query" class="input" type="text" placeholder="Введите вопрос или фразу для поиска" />
+                    <div class="row">
+                        <label class="hint">top_k
+                            <input id="topK" class="number" type="number" min="1" max="50" value="5"
+                                style="width:80px;margin-left:8px" />
+                        </label>
+                        <label class="hint">fetch_k
+                            <input id="fetchK" class="number" type="number" min="1" max="200" value="50"
+                                style="width:90px;margin-left:8px" />
+                        </label>
+                        <label class="hint">ef
+                            <input id="ef" class="number" type="number" min="64" max="4096" value="512"
+                                style="width:90px;margin-left:8px" />
+                        </label>
+                        <label class="hint" style="display:flex;align-items:center;gap:6px">
+                            <input id="exact" type="checkbox" /> exact
+                        </label>
+                        <button id="btnSearch" class="btn">Найти чанки</button>
+                        <button id="btnAsk" class="btn primary">Задать вопрос</button>
+                        <span id="loading" class="hint" style="display:none">Загрузка…</span>
+                    </div>
+                    <details class="hint">
+                        <summary>Что такое «Найти чанки» и параметры</summary>
+                        <div style="margin-top:8px">
+                            <div><b>Найти чанки</b> — показывает наиболее похожие фрагменты текста (чанки) из
+                                загруженных документов.</div>
+                            <div style="margin-top:6px">
+                                <div><b>top_k</b>: сколько лучших совпадений показать.</div>
+                                <div><b>fetch_k</b>: сколько кандидатов рассматривать внутри индекса перед отбором top_k
+                                    (больше — точнее, но медленнее).</div>
+                                <div><b>ef</b>: параметр HNSW для поиска (больше — точнее, но медленнее).</div>
+                                <div><b>exact</b>: если включить, поиск будет точным (медленнее), иначе — быстрый
+                                    приближенный.</div>
+                            </div>
+                        </div>
+                    </details>
+                    <div id="searchDiag" class="diag" style="display:none"></div>
+                    <div id="answerWrap" class="answer" style="display:none">
+                        <h4>Ответ</h4>
+                        <div id="answerPlaceholder" class="hint">Результаты откроются в отдельном окне</div>
+                        <div id="answerText" class="text"></div>
+                        <div class="sources">
+                            <div class="hint">Источники:</div>
+                            <div id="answerSources" class="results"></div>
+                        </div>
+                        <div id="askDiag" class="diag" style="margin-top:8px"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- Modal: найденные чанки -->
+        <div id="chunksModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="chunksTitle">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="chunksTitle">Найденные чанки</div>
+                    <button id="chunksClose" class="modal-close">Закрыть</button>
+                </div>
+                <div class="modal-body">
+                    <div id="chunksDiag" class="modal-diag"></div>
+                    <div id="results" class="results"></div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const dropzone = $("dropzone");
+        const fileInput = $("fileInput");
+
+        function setLoading(isLoading) {
+            $("loading").style.display = isLoading ? "inline" : "none";
+        }
+
+        function renderDocs(map) {
+            const el = $("docs");
+            el.innerHTML = "";
+            const names = Object.keys(map || {}).sort((a, b) => a.localeCompare(b));
+            if (names.length === 0) {
+                el.innerHTML = `<div class="hint">Пока пусто</div>`;
+                return;
+            }
+            for (const name of names) {
+                const item = document.createElement("div");
+                item.className = "list-item";
+                item.innerHTML = `<span title="${name}">${name}</span><span class="badge">${map[name]}</span>`;
+                el.appendChild(item);
+            }
+        }
+
+        function renderSearch(res) {
+            const results = $("results");
+            const modalDiag = $("chunksDiag");
+            results.innerHTML = "";
+            modalDiag.textContent = "";
+            if (!res) return;
+            const di = res.diagnostics || {};
+            modalDiag.textContent = `Найдено: ${di.count || 0} · top_k=${di.top_k} · ef=${di.ef} · fetch_k=${di.fetch_k} · exact=${di.exact}`;
+            for (const [i, it] of (res.items || []).entries()) {
+                const hit = document.createElement("div");
+                hit.className = "hit";
+                const file = it.filename ? `${it.filename}:${it.idx ?? 0}` : `doc:${it.idx ?? 0}`;
+                hit.innerHTML = `
+                    <div class="meta"><span class="score">score ${it.score.toFixed(3)}</span><span>•</span><span>${file}</span></div>
+                    <div class="title">Фрагмент #${i + 1}</div>
+                    <div class="text">${escapeHtml(it.text)}</div>
+                `;
+                results.appendChild(hit);
+            }
+            openChunksModal();
+        }
+
+        function renderAnswer(res) {
+            const wrap = $("answerWrap");
+            const text = $("answerText");
+            const src = $("answerSources");
+            const diag = $("askDiag");
+            const placeholder = $("answerPlaceholder");
+            text.textContent = "";
+            if (src) src.innerHTML = "";
+            diag.textContent = "";
+            if (!res) { wrap.style.display = "none"; return; }
+            wrap.style.display = "block";
+            const answer = res.answer || "";
+            text.textContent = answer;
+            if (placeholder) placeholder.style.display = answer ? "none" : "block";
+            // Источники (чанки) при Ask не показываем — скрываем блок
+            const sourcesWrap = wrap.querySelector('.sources');
+            if (sourcesWrap) sourcesWrap.style.display = 'none';
+            const di = res.diagnostics || {};
+            if (di && (di.llm_error || di.error)) {
+                diag.textContent = String(di.llm_error || di.error);
+            } else {
+                diag.textContent = "";
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s || "").replace(/[&<>\"]+/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));
+        }
+
+        dropzone.addEventListener("click", () => fileInput.click());
+        dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag"); });
+        dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+        dropzone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropzone.classList.remove("drag");
+            if (e.dataTransfer?.files?.length) {
+                fileInput.files = e.dataTransfer.files;
+                uploadSelectedFiles();
+            }
+        });
+
+        async function uploadSelectedFiles() {
+            const files = fileInput.files;
+            if (!files || files.length === 0) { return; }
+            const fd = new FormData();
+            for (const f of files) fd.append("files", f);
+            $("uploadStatus").textContent = "Подготовка…";
+            try {
+                // Асинхронная загрузка — получаем task_id и опрашиваем прогресс
+                const url = new URL("/upload_async", location.origin);
+                const cw = parseInt($("chunkWords").value || "220", 10) || 220;
+                const co = parseInt($("chunkOverlap").value || "40", 10) || 40;
+                url.searchParams.set("chunk_words", String(cw));
+                url.searchParams.set("chunk_overlap", String(co));
+                const res = await fetch(url, { method: "POST", body: fd });
+                const json = await res.json();
+                if (!json.ok) throw new Error("upload_async failed");
+                $("uploadStatus").textContent = "Индексация…";
+                const block = document.getElementById("progressBlock");
+                if (block) block.style.display = "block";
+                const tasks = json.tasks || [];
+                await pollProgress(tasks);
+                $("uploadStatus").textContent = "Готово";
+                await refreshDocs();
+            } catch (e) {
+                $("uploadStatus").textContent = "Ошибка: " + (e?.message || e);
+            }
+        }
+
+        async function pollProgress(tasks) {
+            const area = $("progressArea");
+            const block = document.getElementById("progressBlock");
+            area.innerHTML = "";
+            const taskMap = new Map(tasks.map(t => [t.task_id, { ...t, done: false, processed: 0 }]));
+            function render() {
+                area.innerHTML = "";
+                for (const t of taskMap.values()) {
+                    const pct = t.total ? Math.round((t.processed / t.total) * 100) : (t.done ? 100 : 0);
+                    const row = document.createElement("div");
+                    row.className = "list-item";
+                    row.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.filename}">${t.filename}</span><span class="badge">${pct}%</span>`;
+                    area.appendChild(row);
+                }
+            }
+            render();
+            let allDone = false;
+            while (!allDone) {
+                await new Promise(r => setTimeout(r, 400));
+                allDone = true;
+                for (const [id, t] of taskMap) {
+                    if (t.done) continue;
+                    try {
+                        const res = await fetch(`/progress?task_id=${encodeURIComponent(id)}`);
+                        if (!res.ok) continue;
+                        const st = await res.json();
+                        t.processed = st.processed ?? t.processed;
+                        t.total = st.total ?? t.total;
+                        t.done = !!st.done;
+                        taskMap.set(id, t);
+                    } catch { }
+                    if (!t.done) allDone = false;
+                }
+                render();
+            }
+            // Финальный рендер -> пауза -> скрыть и очистить
+            render();
+            await new Promise(r => setTimeout(r, 600));
+            area.innerHTML = "";
+            if (block) block.style.display = "none";
+        }
+
+        fileInput.addEventListener("change", uploadSelectedFiles);
+
+
+        $("btnClear").onclick = async () => {
+            if (!confirm("Очистить коллекцию Qdrant? Действие необратимо.")) return;
+            $("uploadStatus").textContent = "Очистка…";
+            try {
+                const res = await fetch("/reindex?force=true", { method: "POST" });
+                if (!res.ok) throw new Error(`${res.status}`);
+                $("uploadStatus").textContent = "База очищена";
+                await refreshDocs();
+                $("results").innerHTML = "";
+                $("searchDiag").textContent = "";
+                $("answerWrap").style.display = "none";
+            } catch (e) {
+                $("uploadStatus").textContent = "Ошибка очистки";
+            }
+        };
+
+        async function refreshDocs() {
+            try {
+                const res = await fetch("/documents");
+                if (!res.ok) throw new Error(`${res.status}`);
+                const json = await res.json();
+                renderDocs(json);
+            } catch (e) {
+                renderDocs({ "Ошибка получения /documents": 0 });
+            }
+        }
+
+        $("btnSearch").onclick = async () => {
+            const q = $("query").value.trim();
+            const topK = parseInt($("topK").value || "5", 10) || 5;
+            const fetchK = parseInt($("fetchK").value || "50", 10) || 50;
+            const ef = parseInt($("ef").value || "512", 10) || 512;
+            const exact = $("exact").checked;
+            if (!q) return;
+            setLoading(true);
+            try {
+                const url = new URL("/search", location.origin);
+                url.searchParams.set("q", q);
+                url.searchParams.set("top_k", String(topK));
+                url.searchParams.set("fetch_k", String(fetchK));
+                url.searchParams.set("ef", String(ef));
+                url.searchParams.set("exact", String(Boolean(exact)));
+                const res = await fetch(url);
+                const json = await res.json();
+                renderSearch(json);
+            } catch (e) {
+                $("searchDiag").textContent = "Ошибка поиска";
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        function openChunksModal() {
+            const m = document.getElementById("chunksModal");
+            if (m) m.classList.add("open");
+        }
+        function closeChunksModal() {
+            const m = document.getElementById("chunksModal");
+            if (m) m.classList.remove("open");
+        }
+        document.getElementById("chunksClose").addEventListener("click", closeChunksModal);
+        document.getElementById("chunksModal").addEventListener("click", (e) => {
+            if (e.target === document.getElementById("chunksModal")) closeChunksModal();
+        });
+
+        $("btnAsk").onclick = async () => {
+            const q = $("query").value.trim();
+            const topK = parseInt($("topK").value || "5", 10) || 5;
+            if (!q) return;
+            setLoading(true);
+            try {
+                const url = new URL("/ask", location.origin);
+                url.searchParams.set("q", q);
+                url.searchParams.set("top_k", String(topK));
+                const res = await fetch(url);
+                const json = await res.json();
+                renderAnswer(json);
+            } catch (e) {
+                $("askDiag").textContent = "Ошибка при запросе ответа";
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        refreshDocs();
+
+    </script>
+</body>
+
+</html>
