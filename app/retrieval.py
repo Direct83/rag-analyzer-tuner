@@ -40,7 +40,8 @@ def embed_one(text: str) -> List[float]:
 
 def _get_llm_model() -> str:
     # Подхватываем модель из окружения/файла .env при каждом вызове
-    load_dotenv(override=False)
+    # override=True — чтобы изменения в .env применялись без рестарта
+    load_dotenv(override=True)
     return os.getenv("OPENAI_MODEL") or LLM_MODEL
 
 def ensure_collection() -> None:

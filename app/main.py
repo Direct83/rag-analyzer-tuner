@@ -16,8 +16,7 @@ from . import retrieval
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
 log = logging.getLogger("rag")
 
-MODEL_NAME = retrieval._get_llm_model()
-app = FastAPI(title=f"RAG Minimal (PDF+TXT, bge-m3 + {MODEL_NAME})")
+app = FastAPI(title=f"RAG Minimal (PDF+TXT, bge-m3 + {retrieval._get_llm_model()})")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
